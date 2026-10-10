@@ -287,6 +287,45 @@
     background:#fff0f3;border:1.5px solid #ffb3c1;animation:pop2 .45s cubic-bezier(.2,1.4,.4,1);
   }
   @keyframes pop2{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+
+  /* ---------- QR share button + modal ---------- */
+  #qrFab{
+    position:fixed;top:max(14px,env(safe-area-inset-top));left:14px;z-index:99998;
+    width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;
+    background:linear-gradient(135deg,var(--rose),#ff7e9f);color:#fff;font-size:20px;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 20px rgba(240,106,141,.4);transition:transform .15s;
+  }
+  #qrFab:active{transform:scale(.92)}
+  #qrOverlay{
+    position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;
+    background:rgba(90,58,72,.55);backdrop-filter:blur(4px);padding:18px;
+  }
+  #qrOverlay.show{display:flex}
+  .qrcard{
+    position:relative;width:100%;max-width:340px;background:var(--card,#fff);backdrop-filter:blur(14px);
+    border:1.5px solid rgba(255,255,255,.9);border-radius:28px;padding:26px 22px 22px;text-align:center;
+    box-shadow:0 20px 50px rgba(240,106,141,.3);animation:enter .4s cubic-bezier(.2,.9,.3,1.2) both;
+  }
+  .qrcard h3{font-size:19px;font-weight:900;color:var(--ink)}
+  .qrcard .qrsub{margin:6px 0 16px;font-size:13px;color:var(--soft);font-weight:600}
+  #qrBox{display:flex;justify-content:center;margin:0 auto;width:220px;height:220px}
+  #qrBox canvas,#qrBox svg{border-radius:16px}
+  .qrlink{
+    margin-top:14px;font-size:12px;color:var(--soft);font-weight:700;word-break:break-all;
+    background:#fff6f8;border:1.5px solid #ffd3dc;border-radius:12px;padding:8px 10px;direction:ltr;
+  }
+  .qractions{display:flex;gap:8px;margin-top:14px}
+  .qractions button{
+    flex:1;margin:0;font:inherit;font-size:14px;font-weight:900;color:#fff;
+    background:linear-gradient(135deg,var(--rose),#ff7e9f);border:0;border-radius:14px;
+    padding:11px;cursor:pointer;box-shadow:0 8px 18px rgba(240,106,141,.35);
+  }
+  .qractions button.ghost{background:#fff;color:var(--rose);border:2px solid #ffd3dc;box-shadow:none}
+  #qrClose{
+    position:absolute;top:10px;left:10px;width:32px;height:32px;border-radius:50%;border:0;
+    background:#fff0f3;color:var(--rose);font-size:16px;font-weight:900;cursor:pointer;line-height:1;
+  }
 #intro{
   
   --paper-0:  #fff6ee;
@@ -1079,6 +1118,22 @@
 </div>
 
 <div class="floaters" id="floaters"></div>
+
+<button type="button" id="qrFab" aria-label="باركود الموقع" title="باركود الموقع">📱</button>
+<div id="qrOverlay" role="dialog" aria-modal="true" aria-label="باركود الموقع">
+  <div class="qrcard">
+    <button type="button" id="qrClose" aria-label="إغلاق">✕</button>
+    <div class="lock" style="margin:-70px auto 10px">💌</div>
+    <h3>امسحي الكود لفتح الموقع</h3>
+    <p class="qrsub">شاركي هالرابط مع أي حد تحبي</p>
+    <div id="qrBox"></div>
+    <div class="qrlink" id="qrLinkText"></div>
+    <div class="qractions">
+      <button type="button" id="qrDownload">تحميل 📥</button>
+      <button type="button" id="qrCopy" class="ghost">نسخ الرابط</button>
+    </div>
+  </div>
+</div>
 
 <main class="screen hide" id="login">
   <div class="card">
@@ -2878,6 +2933,56 @@ if (isRecord){
       .to(P.map(o=>o.e),{opacity:0,scale:.1,duration:.35,ease:'power1.in'},'<+.1');
   }
   new MutationObserver(()=>{ if(bx.classList.contains('show')) play(); }).observe(bx,{attributes:true,attributeFilter:['class']});
+})();
+</script>
+
+<script src="https://unpkg.com/qr-code-styling@1.9.2/lib/qr-code-styling.js"></script>
+<script>
+(function(){
+  const SITE_URL = 'https://enghamzaabojarad.github.io/eeeeed-rrrroro-sheeepr/';
+  const HEART_LOGO = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23f06a8d" d="M12 21s-7.5-4.6-10-9.3C.3 8 2 4 6 4c2.1 0 3.6 1.1 6 3.4C14.4 5.1 15.9 4 18 4c4 0 5.7 4 4 7.7C19.5 16.4 12 21 12 21z"/></svg>'.replace(/"/g,"'")
+  );
+  const fab = document.getElementById('qrFab');
+  const overlay = document.getElementById('qrOverlay');
+  const box = document.getElementById('qrBox');
+  const linkText = document.getElementById('qrLinkText');
+  let qrCode = null;
+
+  function buildQr(){
+    if(qrCode || !window.QRCodeStyling) return;
+    qrCode = new QRCodeStyling({
+      width: 220, height: 220, type: 'svg', data: SITE_URL, image: HEART_LOGO,
+      qrOptions: { errorCorrectionLevel: 'H' },
+      dotsOptions: { color: '#f06a8d', type: 'extra-rounded' },
+      cornersSquareOptions: { color: '#d9a441', type: 'extra-rounded' },
+      cornersDotOptions: { color: '#f06a8d', type: 'dot' },
+      backgroundOptions: { color: '#fff6f8' },
+      imageOptions: { imageSize: .32, margin: 6, hideBackgroundDots: true }
+    });
+    qrCode.append(box);
+  }
+
+  function openQr(){
+    buildQr();
+    linkText.textContent = SITE_URL;
+    overlay.classList.add('show');
+  }
+  function closeQr(){ overlay.classList.remove('show'); }
+
+  fab.addEventListener('click', openQr);
+  document.getElementById('qrClose').addEventListener('click', closeQr);
+  overlay.addEventListener('click', e => { if(e.target === overlay) closeQr(); });
+
+  document.getElementById('qrDownload').addEventListener('click', () => {
+    if(qrCode) qrCode.download({ name: 'qr-الموقع', extension: 'png' });
+  });
+  document.getElementById('qrCopy').addEventListener('click', async () => {
+    const btn = document.getElementById('qrCopy');
+    try{ await navigator.clipboard.writeText(SITE_URL); }catch(e){}
+    const old = btn.textContent; btn.textContent = 'تم النسخ ✓';
+    setTimeout(()=>{ btn.textContent = old; }, 1500);
+  });
 })();
 </script>
 </body>
